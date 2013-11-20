@@ -1,0 +1,10 @@
+vhdl work "../axi3_pkg.vhd"
+vhdl work "../pkg_axi_matrix.vhd"
+vhdl work "../axi_matrix.vhd"
+vhdl work "../axi_3x3_lut.vhd"
+vhdl work "../axi_to_memory.vhd"
+vhdl work "../ram_asym.vhd"
+
+vhdl work "tb_axi_matrix.vhd"
+vhdl work "pkg_axi_master_model.vhd"
+vhdl work "pkg_tools_tb.vhd"
