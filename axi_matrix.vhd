@@ -11,9 +11,10 @@
 ------------------------------------------------------------------------
 
 -- Apply 3 LUT on each input component
--- LUT 12b unsinged in -> 13b signed out
+-- LUT 12b unsinged in -> 15b (±12.2) signed out
 -- Rr = LUTa(R_in); Rg = LUTb(R_in); Rb = LUTc(R_in)
 -- R_out = Rr + Rg + Rb
+-- Take integer part and 
 -- then test R_out with condition < 0 => = 0; > 2^12-1 => = 2^12-1
 
 -- Addresses of LUTs (byte address)
@@ -68,7 +69,7 @@ end entity;
 architecture rtl of axi_matrix is
 
 constant DATA_WIDTH_IN     : positive := R_in'length;
-constant DATA_WIDTH_OUT    : positive := DATA_WIDTH_IN + 1;
+constant DATA_WIDTH_OUT    : positive := 15;  -- ±12.2
 
 signal Rr    : std_logic_vector(DATA_WIDTH_OUT-1 downto 0);
 signal Rg    : std_logic_vector(DATA_WIDTH_OUT-1 downto 0);
@@ -80,15 +81,16 @@ signal Br    : std_logic_vector(DATA_WIDTH_OUT-1 downto 0);
 signal Bg    : std_logic_vector(DATA_WIDTH_OUT-1 downto 0);
 signal Bb    : std_logic_vector(DATA_WIDTH_OUT-1 downto 0);
 
-signal sum_r : signed(DATA_WIDTH_OUT+1 downto 0);
-signal sum_g : signed(DATA_WIDTH_OUT+1 downto 0);
-signal sum_b : signed(DATA_WIDTH_OUT+1 downto 0);
+signal sum_r : signed(DATA_WIDTH_OUT-1 downto 0);
+signal sum_g : signed(DATA_WIDTH_OUT-1 downto 0);
+signal sum_b : signed(DATA_WIDTH_OUT-1 downto 0);
 
 signal valid_delay : std_logic_vector( 2 downto 0);
+signal R_out_i     : std_logic_vector(R_out'range);
+signal G_out_i     : std_logic_vector(G_out'range);
+signal B_out_i     : std_logic_vector(B_out'range);
 
 begin
-
-clk_out <= clk_in;
 
 matrix0 : axi_3x3_lut
   generic map (
@@ -132,11 +134,18 @@ matrix0 : axi_3x3_lut
 
 -- sum of each component
   process(clk_in)
+    variable sum_r_tmp : signed(DATA_WIDTH_OUT+1 downto 0);
+    variable sum_g_tmp : signed(DATA_WIDTH_OUT+1 downto 0);
+    variable sum_b_tmp : signed(DATA_WIDTH_OUT+1 downto 0);
   begin
     if rising_edge(clk_in) then
-      sum_r <= resize(signed(Rr), sum_r'length) + signed(Rg) + signed(Rb);
-      sum_g <= resize(signed(Gr), sum_g'length) + signed(Gg) + signed(Gb);
-      sum_b <= resize(signed(Br), sum_b'length) + signed(Bg) + signed(Bb);
+      sum_r_tmp := resize(signed(Rr), sum_r_tmp'length) + signed(Rg) + signed(Rb);
+      sum_g_tmp := resize(signed(Gr), sum_g_tmp'length) + signed(Gg) + signed(Gb);
+      sum_b_tmp := resize(signed(Br), sum_b_tmp'length) + signed(Bg) + signed(Bb);
+      -- keep only integer part
+      sum_r <= sum_r_tmp(sum_r_tmp'high downto 2);
+      sum_g <= sum_g_tmp(sum_g_tmp'high downto 2);
+      sum_b <= sum_b_tmp(sum_b_tmp'high downto 2);
     end if;
   end process;
 
@@ -145,11 +154,11 @@ matrix0 : axi_3x3_lut
   begin
     if rising_edge(clk_in) then
       if sum_r < 0 then
-        R_out <= (others=>'0');
+        R_out_i <= (others=>'0');
       elsif sum_r > 2**DATA_WIDTH_IN-1 then
-        R_out <= std_logic_vector(to_unsigned(2**DATA_WIDTH_IN-1, R_out'length));
+        R_out_i <= std_logic_vector(to_unsigned(2**DATA_WIDTH_IN-1, R_out'length));
       else
-        R_out <= std_logic_vector(sum_r(R_out'range));
+        R_out_i <= std_logic_vector(sum_r(R_out'range));
       end if;
     end if;
   end process;
@@ -158,11 +167,11 @@ matrix0 : axi_3x3_lut
   begin
     if rising_edge(clk_in) then
       if sum_g < 0 then
-        G_out <= (others=>'0');
+        G_out_i <= (others=>'0');
       elsif sum_g > 2**DATA_WIDTH_IN-1 then
-        G_out <= std_logic_vector(to_unsigned(2**DATA_WIDTH_IN-1, G_out'length));
+        G_out_i <= std_logic_vector(to_unsigned(2**DATA_WIDTH_IN-1, G_out'length));
       else
-        G_out <= std_logic_vector(sum_g(G_out'range));
+        G_out_i <= std_logic_vector(sum_g(G_out'range));
       end if;
     end if;
   end process;
@@ -171,11 +180,11 @@ matrix0 : axi_3x3_lut
   begin
     if rising_edge(clk_in) then
       if sum_b < 0 then
-        B_out <= (others=>'0');
+        B_out_i <= (others=>'0');
       elsif sum_b > 2**DATA_WIDTH_IN-1 then
-        B_out <= std_logic_vector(to_unsigned(2**DATA_WIDTH_IN-1, B_out'length));
+        B_out_i <= std_logic_vector(to_unsigned(2**DATA_WIDTH_IN-1, B_out'length));
       else
-        B_out <= std_logic_vector(sum_b(B_out'range));
+        B_out_i <= std_logic_vector(sum_b(B_out'range));
       end if;
     end if;
   end process;
@@ -188,6 +197,10 @@ matrix0 : axi_3x3_lut
     end if;
   end process;
 
+clk_out   <= clk_in;
 valid_out <= valid_delay(valid_delay'high);
+R_out     <= R_out_i;
+G_out     <= G_out_i;
+B_out     <= B_out_i;
 
 end rtl;

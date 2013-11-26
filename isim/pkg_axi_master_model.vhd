@@ -121,7 +121,7 @@ package body  pkg_axi_master_model  is
     variable file_line       : line;
     variable nb_value        : integer := 0;
     variable count           : integer := 0;
-    variable data            : integer := 0;
+    variable data            : std_logic_vector(31 downto 0);
   begin
 
     readline(line_txt, file_line);  -- comment line
@@ -152,10 +152,11 @@ package body  pkg_axi_master_model  is
     while (not endfile(line_txt)) loop
 
       readline(line_txt, file_line);
-      read(file_line, data);
+      hread(file_line, data);
 
       m_axi_wo.wid      <= (others=>'0');
-      m_axi_wo.wdata    <= std_logic_vector(to_unsigned(data, m_axi_wo.wdata'length));
+      --m_axi_wo.wdata    <= std_logic_vector(to_unsigned(data, m_axi_wo.wdata'length));
+      m_axi_wo.wdata    <= data;
       m_axi_wo.wstrb    <= (others=>'1');
       m_axi_wo.wvalid   <= '1';
       if (count = nb_value-1) then
@@ -228,7 +229,7 @@ package body  pkg_axi_master_model  is
     variable file_line       : line;
     variable nb_value        : integer := 0;
     variable count           : integer := 0;
-    variable data            : integer := 0;
+    variable data            : std_logic_vector(31 downto 0);
   begin
 
     readline(line_txt, file_line);  -- comment line
@@ -260,8 +261,9 @@ package body  pkg_axi_master_model  is
       if (m_axi_ri.rvalid = '1') then
         if (not endfile(line_txt)) then
           readline(line_txt, file_line);
-          read(file_line, data);
-          if (m_axi_ri.rdata /= std_logic_vector(to_unsigned(data, m_axi_ri.rdata'length))) then
+          hread(file_line, data);
+          --if (m_axi_ri.rdata /= std_logic_vector(to_unsigned(data, m_axi_ri.rdata'length))) then
+          if (m_axi_ri.rdata /= data) then
             display("Error during comparison for value nb: " & integer'image(count));
           end if;
         end if;
@@ -274,8 +276,9 @@ package body  pkg_axi_master_model  is
     if (m_axi_ri.rvalid = '1') then
       if (not endfile(line_txt)) then
         readline(line_txt, file_line);
-        read(file_line, data);
-        if (m_axi_ri.rdata /= std_logic_vector(to_unsigned(data, m_axi_ri.rdata'length))) then
+        hread(file_line, data);
+        --if (m_axi_ri.rdata /= std_logic_vector(to_unsigned(data, m_axi_ri.rdata'length))) then
+        if (m_axi_ri.rdata /= data) then
           display("Error during comparison for value nb: " & integer'image(count));
         end if;
       end if;
